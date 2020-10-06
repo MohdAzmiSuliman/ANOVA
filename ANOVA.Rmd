@@ -1,0 +1,351 @@
+---
+title: "ANOVA"
+author: "Mohd Azmi"
+date: "26/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ANOVA
+
+source: https://www.datanovia.com/en/lessons/anova-in-r/
+data source: RM ANOVA DrPH class
+
+other good place to go is https://ademos.people.uic.edu/Chapter21.html
+
+```{r}
+library(pacman)
+p_load(tidyverse, rstatix, haven)
+```
+
+```{r}
+confds <- read_sav("Confidence.sav") %>% mutate_if(is.labelled, ~(as_factor(.)))
+confds
+```
+
+
+# 1-way ANOVA
+
+group by group
+
+```{r}
+confds %>% sample_n_by(group, size = 1)
+```
+
+summary stat
+
+```{r}
+confds %>%
+  group_by(group) %>%
+  get_summary_stats(confid1, type = "mean_sd")
+```
+
+```{r}
+ggplot(confds, aes(x=group, y=confid1)) + geom_boxplot()
+```
+
+outlier
+
+```{r}
+confds %>% 
+  group_by(group) %>% 
+  identify_outliers(confid1)
+```
+
+normality
+
+```{r}
+augment(lm(confid1 ~ group, confds)) %>% 
+  ggplot(aes(sample = .resid)) + geom_qq() + geom_qq_line() + facet_grid(.~group)
+
+augment(lm(confid1 ~ group, confds)) %>% 
+  shapiro_test(.resid)
+
+confds %>% 
+  group_by(group) %>% 
+  shapiro_test(confid1)
+```
+
+homogeneity of variance
+
+```{r}
+augment(lm(confid1 ~ group, confds)) %>%
+  ggplot(aes(x=.fitted, y=.resid)) + geom_point() + geom_hline(yintercept = 0)
+
+levene_test(confds, confid1 ~ group)
+```
+
+Oneway anova
+
+```{r}
+anova_test(confds, confid1 ~ group)
+```
+
+```{r}
+summary(aov(confid1 ~ group, confds))
+```
+
+```{r}
+pairwise.t.test(confds$confid1, confds$group, p.adjust.method = "bonf")
+```
+
+# 2-way ANOVA
+
+```{r}
+confds %>% 
+  group_by(group, gender) %>% 
+  get_summary_stats(confid1, type = "mean_sd")
+```
+
+boxplot
+
+```{r}
+ggplot(confds, aes(x=group, y=confid1, colour = gender)) + geom_boxplot()
+```
+
+outlier
+
+```{r}
+confds %>% 
+  group_by(group, gender) %>% 
+  identify_outliers(confid1)
+```
+ 
+
+normality
+
+```{r}
+augment(lm(confid1 ~ group*gender, confds)) %>%
+  ggplot(aes(sample=.resid)) + geom_qq() + geom_qq_line()
+
+augment(lm(confid1 ~ group*gender, confds)) %>%
+  shapiro_test(.resid)
+
+confds %>% 
+  group_by(group, gender) %>% 
+  shapiro_test(confid1)
+
+augment(lm(confid1 ~ group*gender, confds)) %>%
+  ggplot(aes(sample=.resid)) + geom_qq() + geom_qq_line() + facet_grid(group ~ gender)
+```
+
+Homogeneity of variance
+
+```{r}
+levene_test(confds, confid1 ~ group*gender, center = mean)
+levene_test(confds, confid1 ~ group*gender, center = median)
+```
+
+```{r}
+anova_test(confds, confid1 ~ group*gender, detailed = T)
+```
+
+```{r}
+model.tables(aov(confid1 ~ group*gender, confds))
+```
+
+EM Mean
+
+```{r}
+confds %>% 
+  group_by(gender) %>% 
+  emmeans_test(confid1 ~ group, p.adjust.method = "bonferroni") %>% 
+  get_emmeans()
+```
+
+```{r}
+confds %>% 
+  filter(gender == "male") %>% 
+  emmeans_test(confid1 ~ group, p.adjust.method = "bonferroni") %>% 
+  get_emmeans()
+```
+ 
+alternative
+
+```{r}
+p_load(emmeans)
+
+aovmod <- lm(confid1 ~ group*gender, confds)
+summary(aovmod)
+```
+
+
+group
+```{r}
+emmgroup <- emmeans(aovmod, specs = "group")
+emmgroup
+pairgroup <- pairs(emmgroup)
+pairgroup
+```
+
+
+gender
+```{r}
+emmgender <- emmeans(aovmod, ~ gender)
+emmgender
+pairgender <- pairs(emmgender)
+pairgender
+```
+
+
+group*gender
+```{r}
+emmgrgen <- emmeans(aovmod, specs = "group", by = "gender")
+emmgrgen
+pairgrgen <- pairs(emmgrgen)
+pairgrgen
+```
+
+group*gender 2?
+```{r}
+emmgrgen2 <- emmeans(aovmod, specs = "gender", by = "group")
+emmgrgen2
+pairgrgen2 <- pairs(emmgrgen2)
+pairgrgen2
+```
+
+
+group*gender 3?
+```{r}
+emmgrgen3 <- emmeans(aovmod, ~ group | gender)
+emmgrgen3
+pairgrgen3 <- pairs(emmgrgen3)
+pairgrgen3
+```
+group*gender 4?
+```{r}
+emmgrgen4 <- emmeans(aovmod, ~ gender | group)
+emmgrgen4
+pairgrgen4 <- pairs(emmgrgen4)
+pairgrgen4
+```
+
+# RM ANOVA
+
+```{r}
+confds
+
+confds_long <- confds %>% 
+  pivot_longer(c(confid1, confid2, confid3), names_to = "time", values_to = "confidscore") %>% 
+  convert_as_factor(id, time)
+confds_long
+```
+
+summary
+
+```{r}
+confds_long %>% 
+  group_by(time) %>% 
+  get_summary_stats(confidscore, type = "mean_sd")
+```
+
+outlier
+
+```{r}
+confds_long %>% 
+  group_by(time) %>% 
+  identify_outliers(confidscore)
+
+```
+
+normality
+
+```{r}
+confds_long %>% 
+  group_by(time) %>% 
+  shapiro_test(confidscore)
+
+```
+
+
+```{r}
+ggplot(confds_long, aes(sample=confidscore)) + geom_qq() + geom_qq_line() + facet_grid(.~time)
+```
+
+```{r}
+anova_test(confds_long, dv = confidscore, wid = id, within = time)
+anova_test(confds_long, dv = confidscore, wid = id, within = time) %>% get_anova_table()
+
+```
+
+pair-wise comparison
+
+```{r}
+confds_long %>% 
+  pairwise_t_test(confidscore ~ time, paired = T, p.adjust.method = "bonferroni")
+```
+
+
+emmean
+
+```{r}
+confds_long %>% 
+  emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni") %>% 
+  get_emmeans()
+
+confds_long %>% 
+  emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni")
+```
+
+
+```{r}
+p_load(lme4)
+
+rmanova_mod <- lmer(confidscore ~ time + (1 | id ), confds_long)
+```
+
+```{r}
+p_load(afex)
+
+rmanova_mod2 <- aov_ez("id", "confidscore", confds_long, within = "time")
+rmanova_mod2 # same with anova_test() %>% get_anova_table() above
+```
+
+```{r}
+emmeans(rmanova_mod2, specs = "time")
+```
+
+```{r}
+pairs(emmeans(rmanova_mod2, specs = "time"))
+```
+
+# Mixed 2-way RM ANOVA
+
+```{r}
+confds_long
+```
+
+
+homogeneity of covariance - box m test
+
+```{r}
+box_m(confds_long[, "confidscore"], confds_long$group)
+```
+
+mixed 2-way RM ANOVA
+
+```{r}
+anova_test(confds_long, dv = confidscore, wid = id, between = group, within = time)
+anova_test(confds_long, confidscore ~ group + Error(id/time))
+get_anova_table(anova_test(confds_long, dv = confidscore, wid = id, between = group, within = time), correction = "GG")
+get_anova_table(anova_test(confds_long, dv = confidscore, wid = id, between = group, within = time), correction = "HF")
+
+```
+
+
+# additional
+
+list of model supported by emmeans http://127.0.0.1:16913/help/library/emmeans/doc/models.html
+
+instead of finding emmean using emmeans package, can also used TukeyHSD
+
+tukeyHSD(model)
+
+```{r}
+TukeyHSD(aov(confid1 ~ group, confds))
+```
+
+other
