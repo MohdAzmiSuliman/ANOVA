@@ -335,6 +335,15 @@ get_anova_table(anova_test(confds_long, dv = confidscore, wid = id, between = gr
 
 ```
 
+emmean
+
+```{r}
+confds_long %>% 
+  group_by(gender) %>% 
+  emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni") %>% 
+  get_emmeans()
+```
+
 
 # additional
 
