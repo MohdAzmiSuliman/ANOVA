@@ -1,7 +1,4 @@
-README
-================
-
-## ANOVA
+# ANOVA
 
 This is scripts for ANOVA analyses, which include
 

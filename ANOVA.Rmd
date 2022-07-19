@@ -275,8 +275,17 @@ pair-wise comparison
 
 ```{r}
 confds_long %>% 
-  pairwise_t_test(confidscore ~ time, paired = T, p.adjust.method = "bonferroni")
+  pairwise_t_test(confidscore ~ time, paired = T, p.adjust.method = "bonferroni", detailed = T)
 ```
+
+pairwise alternative?
+
+```{r}
+confds_long %>% 
+  emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni", detailed = T)
+```
+
+
 
 
 emmean
@@ -285,9 +294,6 @@ emmean
 confds_long %>% 
   emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni") %>% 
   get_emmeans()
-
-confds_long %>% 
-  emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni")
 ```
 
 
@@ -344,6 +350,13 @@ confds_long %>%
   get_emmeans()
 ```
 
+pairwise comparison
+
+```{r}
+confds_long %>% 
+  group_by(gender) %>% 
+  emmeans_test(confidscore ~ time, p.adjust.method = "bonferroni", detailed = T)
+```
 
 # additional
 
